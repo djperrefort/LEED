@@ -40,8 +40,7 @@ class FeatureDefinitions(BaseWindow):
 
         # Populate and format the table
         self.tableWidget.populateTable()
-        self.tableWidget.setColumnWidth(0, 10)
-        self.tableWidget.setColumnWidth(1, 175)
+        self.tableWidget.setColumnWidth(0, 200)
         for i in range(self.tableWidget.columnCount()):
             self.tableWidget.horizontalHeader().setSectionResizeMode(i, QHeaderView.Fixed)
 

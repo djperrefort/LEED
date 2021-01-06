@@ -5,11 +5,24 @@ format, validate, and export spectral feature definitions.
 
 from typing import List
 
-from PyQt5 import QtCore, QtWidgets
-from PyQt5 import QtGui
+from PyQt5 import QtWidgets, QtGui
+from PyQt5.QtCore import Qt
 
 from ..settings import ApplicationSettings, FeatureDefinition
 from ..utils import BlockSignals
+
+
+class CustomDelegate(QtWidgets.QStyledItemDelegate):
+    """Delegator that adds a checkbox to the left side of a ``QTableWidget`` column"""
+
+    def initStyleOption(self, option, index):
+        value = index.data(Qt.CheckStateRole)
+        if value is None:
+            model = index.model()
+            model.setData(index, Qt.Unchecked, Qt.CheckStateRole)
+
+        super().initStyleOption(option, index)
+        option.displayAlignment = Qt.AlignLeft | Qt.AlignVCenter
 
 
 class FeatureTableWidget(QtWidgets.QTableWidget):
@@ -21,29 +34,27 @@ class FeatureTableWidget(QtWidgets.QTableWidget):
     """
 
     # List values from settings file in order of their associated table columns
-    settingsColumnOrder = ('enabled', 'feature_id', 'restframe', 'lower_blue', 'upper_blue', 'lower_red', 'upper_red')
+    settingsColumnOrder = ('feature_id', 'restframe', 'lower_blue', 'upper_blue', 'lower_red', 'upper_red')
 
     def __init__(self, *args, **kwargs) -> None:
         """Populate and style the table."""
 
         super().__init__(*args, **kwargs)
         self.settings = ApplicationSettings().loadFromDisk()
+        self.setItemDelegateForColumn(0, CustomDelegate(self))
         self.populateTable()
+
+        # Connect signals and slots
         self.itemChanged.connect(self._processCellChanged)
 
     def contentsToList(self) -> List[FeatureDefinition]:
         """Return current table contents as a list of feature definitions."""
 
         tableContent = []
-
         for row in range(self.rowCount()):
-            rowData = dict()  # Accumulate kwargs for a FeatureDefinition object
-
-            for column, columnName in enumerate(self.settingsColumnOrder):
-                cell = self.item(row, column)
-                rowData[columnName] = cell.text() if column else int(cell.checkState())
-
-            tableContent.append(FeatureDefinition(**rowData))
+            kwargs = {name: self.item(row, column).text() for column, name in enumerate(self.settingsColumnOrder)}
+            kwargs['enabled'] = self.item(row, 0).checkState()
+            tableContent.append(FeatureDefinition(**kwargs))
 
         return tableContent
 
@@ -62,16 +73,13 @@ class FeatureTableWidget(QtWidgets.QTableWidget):
 
         # Add a new empty row
         newRowIndex = self.rowCount()
-        self.setRowCount(newRowIndex + 1)
 
         # Add empty widgets to each cell so the cell is stylable
         with BlockSignals(self):
+            self.setRowCount(newRowIndex + 1)
             for column in range(self.columnCount()):
                 newItem = QtWidgets.QTableWidgetItem()
-                if column == 0:
-                    newItem.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
-                    newItem.setCheckState(QtCore.Qt.Unchecked)
-
+                newItem.setTextAlignment(Qt.AlignHCenter)
                 self.setItem(newRowIndex, column, newItem)
 
         return newRowIndex
@@ -92,17 +100,10 @@ class FeatureTableWidget(QtWidgets.QTableWidget):
 
         for feature in self.settings.features:
             rowIndex = self.addEmptyRow()
-
             for column, columnName in enumerate(self.settingsColumnOrder):
-                cellValue = getattr(feature, columnName)
-                if column == 0:  # The first column is comprised of checkboxes
-                    self.item(rowIndex, column).setCheckState(cellValue)
+                self.setItem(rowIndex, column, QtWidgets.QTableWidgetItem(str(getattr(feature, columnName))))
 
-                else:
-                    self.setItem(rowIndex, column, QtWidgets.QTableWidgetItem(str(cellValue)))
-
-            # Set row background color according to the checkbox value in column 0
-            self._updateRowColor(rowIndex)
+            self.item(rowIndex, 0).setCheckState(feature.enabled)
 
     def validateCell(self, item: QtWidgets.QTableWidgetItem) -> bool:
         """Validate the contents of a given cell and issue an error dialog if invalid.
@@ -117,18 +118,14 @@ class FeatureTableWidget(QtWidgets.QTableWidget):
             Whether the cell passes validation
         """
 
-        status = True
-        column = item.column()
+        status = True  # Assume the cell is valid
         cellText = item.text()
 
-        if column == 0:  # Checkboxes are always valid
-            return status
-
         if not cellText:
-            QtWidgets.QMessageBox.about(self, 'Invalid Input', 'The table cannot have empty cells.')
             status = False
+            QtWidgets.QMessageBox.about(self, 'Invalid Input', 'The table cannot have empty cells.')
 
-        elif column > 1:
+        elif item.column() > 0:
             try:
                 float(cellText)
 
@@ -155,7 +152,7 @@ class FeatureTableWidget(QtWidgets.QTableWidget):
         """
 
         for row in range(self.rowCount()):
-            for column in range(1, self.columnCount()):
+            for column in range(self.columnCount()):
                 if not self.validateCell(self.item(row, column)):
                     return False
 
