@@ -16,13 +16,14 @@ class CustomDelegate(QtWidgets.QStyledItemDelegate):
     """Delegator that adds a checkbox to the left side of a ``QTableWidget`` column"""
 
     def initStyleOption(self, option, index):
-        value = index.data(Qt.CheckStateRole)
-        if value is None:
-            model = index.model()
-            model.setData(index, Qt.Unchecked, Qt.CheckStateRole)
+        with BlockSignals(self.parent()):
+            value = index.data(Qt.CheckStateRole)
+            if value is None:
+                model = index.model()
+                model.setData(index, Qt.Unchecked, Qt.CheckStateRole)
 
-        super().initStyleOption(option, index)
-        option.displayAlignment = Qt.AlignLeft | Qt.AlignVCenter
+            super().initStyleOption(option, index)
+            option.displayAlignment = Qt.AlignLeft | Qt.AlignVCenter
 
 
 class FeatureTableWidget(QtWidgets.QTableWidget):
