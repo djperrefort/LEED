@@ -17,3 +17,6 @@ dist
 
 # Scratch files
 scratch/
+
+# Non-default application Settings
+leed/resources/settings.yml
