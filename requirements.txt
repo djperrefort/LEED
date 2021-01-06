@@ -1,0 +1,13 @@
+bokeh
+sndata==1.1.1
+PyQt5
+pyqtgraph
+astropy>=4.0
+extinction
+matplotlib
+numpy>=1.16
+scipy
+sfdmap
+uncertainties
+pandas
+pyyaml
