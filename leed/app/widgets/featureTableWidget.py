@@ -35,18 +35,13 @@ class FeatureTableWidget(QtWidgets.QTableWidget):
         """Return current table contents as a list of feature definitions."""
 
         tableContent = []
+
         for row in range(self.rowCount()):
-            rowData = dict()
+            rowData = dict()  # Accumulate kwargs for a FeatureDefinition object
 
-            for column in range(self.columnCount()):
-                columnName = self.settingsColumnOrder[column]
+            for column, columnName in enumerate(self.settingsColumnOrder):
                 cell = self.item(row, column)
-
-                if column == 0:
-                    rowData[columnName] = int(cell.checkState())
-
-                else:
-                    rowData[columnName] = cell.text()
+                rowData[columnName] = cell.text() if column else int(cell.checkState())
 
             tableContent.append(FeatureDefinition(**rowData))
 
@@ -65,20 +60,20 @@ class FeatureTableWidget(QtWidgets.QTableWidget):
             The index of the newly added row
         """
 
+        # Add a new empty row
         newRowIndex = self.rowCount()
         self.setRowCount(newRowIndex + 1)
 
-        checkbox = QtWidgets.QTableWidgetItem()
-        checkbox.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
-
+        # Add empty widgets to each cell so the cell is stylable
         with BlockSignals(self):
-            self.setItem(newRowIndex, 0, checkbox)
+            for column in range(self.columnCount()):
+                newItem = QtWidgets.QTableWidgetItem()
+                if column == 0:
+                    newItem.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
+                    newItem.setCheckState(QtCore.Qt.Unchecked)
 
-            # Add empty widgets to any empty cells so the cell is stylable
-            for column in range(1, self.columnCount()):
-                self.setItem(newRowIndex, column, QtWidgets.QTableWidgetItem())
+                self.setItem(newRowIndex, column, newItem)
 
-        checkbox.setCheckState(QtCore.Qt.Unchecked)
         return newRowIndex
 
     def populateTable(self, defaults: bool = False) -> None:
@@ -98,15 +93,13 @@ class FeatureTableWidget(QtWidgets.QTableWidget):
         for feature in self.settings.features:
             rowIndex = self.addEmptyRow()
 
-            for columnIndex, columnName in enumerate(self.settingsColumnOrder):
+            for column, columnName in enumerate(self.settingsColumnOrder):
                 cellValue = getattr(feature, columnName)
+                if column == 0:  # The first column is comprised of checkboxes
+                    self.item(rowIndex, column).setCheckState(cellValue)
 
-                # The first column is comprised of checkboxes
-                if columnIndex == 0:
-                    self.item(rowIndex, columnIndex).setCheckState(cellValue)
-                    continue
-
-                self.setItem(rowIndex, columnIndex, QtWidgets.QTableWidgetItem(str(cellValue)))
+                else:
+                    self.setItem(rowIndex, column, QtWidgets.QTableWidgetItem(str(cellValue)))
 
             # Set row background color according to the checkbox value in column 0
             self._updateRowColor(rowIndex)
@@ -125,15 +118,17 @@ class FeatureTableWidget(QtWidgets.QTableWidget):
         """
 
         status = True
-        if item.column() == 0:
+        column = item.column()
+        cellText = item.text()
+
+        if column == 0:  # Checkboxes are always valid
             return status
 
-        cellText = item.text()
         if not cellText:
             QtWidgets.QMessageBox.about(self, 'Invalid Input', 'The table cannot have empty cells.')
             status = False
 
-        elif item.column() > 1:
+        elif column > 1:
             try:
                 float(cellText)
 
@@ -146,7 +141,7 @@ class FeatureTableWidget(QtWidgets.QTableWidget):
         if not status:  # Strongly encourage the user to fix their mistake by reelecting the cell in edit mode
             self.setCurrentItem(None)  # Exit editing mode if already enabled
             self.setCurrentItem(item)
-            self.editItem(item)
+            self.editItem(item)  # Enter editing mode for the invalid cell
 
         return status
 
@@ -173,12 +168,9 @@ class FeatureTableWidget(QtWidgets.QTableWidget):
             item: The cell item that was changed
         """
 
-        row = item.row()
-        column = item.column()
-
         self.validateCell(item)
-        if column == 0:  # Change the row color to reflect the checkbox state
-            self._updateRowColor(row)
+        if item.column() == 0:
+            self._updateRowColor(item.row())
 
     def _updateRowColor(self, row: int) -> None:
         """Update the color of a given row to match it's checkbox state
