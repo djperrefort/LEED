@@ -6,6 +6,7 @@ stored in settings.
 from functools import partial
 
 from PyQt5 import QtWidgets
+from PyQt5.QtWidgets import QHeaderView
 
 from .baseWindow import BaseWindow
 
@@ -39,6 +40,10 @@ class FeatureDefinitions(BaseWindow):
 
         # Populate and format the table
         self.tableWidget.populateTable()
+        self.tableWidget.setColumnWidth(0, 10)
+        self.tableWidget.setColumnWidth(1, 175)
+        for i in range(self.tableWidget.columnCount()):
+            self.tableWidget.horizontalHeader().setSectionResizeMode(i, QHeaderView.Fixed)
 
     def apply(self) -> None:
         """Save changes without exiting the window."""
