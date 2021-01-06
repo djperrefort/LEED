@@ -8,7 +8,7 @@ from typing import List
 from PyQt5 import QtWidgets, QtGui
 from PyQt5.QtCore import Qt
 
-from ..settings import ApplicationSettings, FeatureDefinition
+from ..settings import FeatureDefinition, SettingsLoader
 from ..utils import BlockSignals
 
 
@@ -41,7 +41,6 @@ class FeatureTableWidget(QtWidgets.QTableWidget):
         super().__init__(*args, **kwargs)
         self.setItemDelegateForColumn(0, CustomDelegate(self))  # Add checkbox to first table column
         self.itemChanged.connect(self._processCellChanged)  # Connect signals and slots
-        self.settings = ApplicationSettings().loadFromDisk()
 
     def contentsToList(self) -> List[FeatureDefinition]:
         """Return current table contents as a list of feature definitions."""
@@ -49,7 +48,7 @@ class FeatureTableWidget(QtWidgets.QTableWidget):
         features = []
         for row in range(self.rowCount()):
             kwargs = {name: self.item(row, column).text() for column, name in enumerate(self.settingsColumnOrder)}
-            kwargs['enabled'] = self.item(row, 0).checkState()
+            kwargs['enabled'] = int(self.item(row, 0).checkState())
             features.append(FeatureDefinition(**kwargs))
 
         return features
@@ -87,14 +86,13 @@ class FeatureTableWidget(QtWidgets.QTableWidget):
             defaults: Restore the table to default values instead of currently saved settings
         """
 
-        if defaults:
-            self.settings = self.settings.loadFromDisk()
+        settings = SettingsLoader(defaults)
 
         # Clear the table so we can repopulate it row by row
         self.setRowCount(0)
         self.setColumnCount(len(self.settingsColumnOrder))
 
-        for feature in self.settings.features:
+        for feature in settings.features:
             rowIndex = self.addEmptyRow()
             for column, columnName in enumerate(self.settingsColumnOrder):
                 self.item(rowIndex, column).setText(str(getattr(feature, columnName)))

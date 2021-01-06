@@ -8,6 +8,7 @@ from functools import partial
 from PyQt5 import QtWidgets
 
 from .baseWindow import BaseWindow
+from ..settings import SettingsLoader
 
 
 class FeatureDefinitions(BaseWindow):
@@ -49,8 +50,9 @@ class FeatureDefinitions(BaseWindow):
         """Save changes without exiting the window."""
 
         if self.tableWidget.validateTable():
-            self.settings.features = self.tableWidget.contentsToList()
-            self.settings.saveToDisk()
+            settings = SettingsLoader()
+            settings.features = self.tableWidget.contentsToList()
+            settings.saveToDisk()
 
     def save(self) -> None:
         """Save changes and exit the window."""

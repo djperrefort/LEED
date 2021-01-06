@@ -3,8 +3,6 @@ from typing import Optional
 
 from PyQt5 import QtCore, QtWidgets, uic
 
-from leed.app.settings import ApplicationSettings
-
 LAYOUT_DIR = Path(__file__).resolve().parent.parent.parent / 'resources' / 'layouts'
 
 
@@ -30,7 +28,6 @@ class BaseWindow(QtWidgets.QMainWindow):
         """
 
         super().__init__(parent)
-        self.settings = ApplicationSettings().loadFromDisk()
 
         # Automatically load the style file
         if dp := self.designPath():
