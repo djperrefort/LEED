@@ -16,11 +16,9 @@ class CustomDelegate(QtWidgets.QStyledItemDelegate):
     """Delegator that adds a checkbox to the left side of a ``QTableWidget`` column"""
 
     def initStyleOption(self, option, index):
-        with BlockSignals(self.parent()):
-            value = index.data(Qt.CheckStateRole)
-            if value is None:
-                model = index.model()
-                model.setData(index, Qt.Unchecked, Qt.CheckStateRole)
+        with BlockSignals(self.parent()):  # Avoid stray signals while updating style options
+            if index.data(Qt.CheckStateRole) is None:
+                index.model().setData(index, Qt.Unchecked, Qt.CheckStateRole)
 
             super().initStyleOption(option, index)
             option.displayAlignment = Qt.AlignLeft | Qt.AlignVCenter
@@ -41,23 +39,20 @@ class FeatureTableWidget(QtWidgets.QTableWidget):
         """Populate and style the table."""
 
         super().__init__(*args, **kwargs)
+        self.setItemDelegateForColumn(0, CustomDelegate(self))  # Add checkbox to first table column
+        self.itemChanged.connect(self._processCellChanged)  # Connect signals and slots
         self.settings = ApplicationSettings().loadFromDisk()
-        self.setItemDelegateForColumn(0, CustomDelegate(self))
-        self.populateTable()
-
-        # Connect signals and slots
-        self.itemChanged.connect(self._processCellChanged)
 
     def contentsToList(self) -> List[FeatureDefinition]:
         """Return current table contents as a list of feature definitions."""
 
-        tableContent = []
+        features = []
         for row in range(self.rowCount()):
             kwargs = {name: self.item(row, column).text() for column, name in enumerate(self.settingsColumnOrder)}
             kwargs['enabled'] = self.item(row, 0).checkState()
-            tableContent.append(FeatureDefinition(**kwargs))
+            features.append(FeatureDefinition(**kwargs))
 
-        return tableContent
+        return features
 
     def removeSelectedRows(self) -> None:
         """Delete the currently selected row from the window's center table."""
@@ -80,7 +75,7 @@ class FeatureTableWidget(QtWidgets.QTableWidget):
             self.setRowCount(newRowIndex + 1)
             for column in range(self.columnCount()):
                 newItem = QtWidgets.QTableWidgetItem()
-                newItem.setTextAlignment(Qt.AlignHCenter)
+                newItem.setTextAlignment(Qt.AlignCenter)
                 self.setItem(newRowIndex, column, newItem)
 
         return newRowIndex
@@ -102,7 +97,7 @@ class FeatureTableWidget(QtWidgets.QTableWidget):
         for feature in self.settings.features:
             rowIndex = self.addEmptyRow()
             for column, columnName in enumerate(self.settingsColumnOrder):
-                self.setItem(rowIndex, column, QtWidgets.QTableWidgetItem(str(getattr(feature, columnName))))
+                self.item(rowIndex, column).setText(str(getattr(feature, columnName)))
 
             self.item(rowIndex, 0).setCheckState(feature.enabled)
 
