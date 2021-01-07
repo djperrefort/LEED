@@ -1,2 +1,3 @@
 from .baseWindow import BaseWindow
-from .featureDefinitions import FeatureDefinitions
+from .featureDefinitionsWindow import FeatureDefinitionsWindow
+from .plotSettingsWindow import PlotSettingsWindow

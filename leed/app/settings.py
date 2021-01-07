@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Collection, List
+from typing import Optional, List, Tuple
 
 import yaml
 from PyQt5.QtGui import QBrush, QColor, QPen
@@ -15,24 +15,26 @@ SETTINGS_PATH = RESOURCES_DIR / 'settings.yml'
 class Settings:
     """Generic class for representing package settings"""
 
-    def asdict(self) -> dict:
+    def asDict(self) -> dict:
         """Return the settings instance as a dictionary"""
 
         out_dict = dict()
-        for attr, otype in self.__annotations__:
-            if isinstance(otype, dict):
-                out_dict[attr] = getattr(self, attr)
+        for annotation in self.__dataclass_fields__:
+            attr = getattr(self, annotation)
 
-            if isinstance(otype, Collection):
-                out_dict[attr] = [a.asdict() for a in getattr(self, attr)]
+            if hasattr(attr, 'asDict'):
+                out_dict[annotation] = attr.asDict()
+
+            elif isinstance(attr, (List, Tuple)):
+                out_dict[annotation] = [a.asDict() for a in attr]
 
             else:
-                raise TypeError('Cannot parse {attr} into dictionary or list of dictionaries')
+                out_dict[annotation] = attr
 
         return out_dict
 
     def __str__(self) -> str:
-        return str(self.asdict())
+        return str(self.asDict())
 
 
 @dataclass
@@ -78,6 +80,8 @@ class ColorSettings(Settings):
 
 @dataclass
 class BrushSettings(Settings):
+    """Style arguments for brush elements"""
+
     color: ColorSettings
 
     def asBrush(self) -> QBrush:
@@ -90,7 +94,7 @@ class BrushSettings(Settings):
 class PenSettings(BrushSettings):
     """Style arguments for pen elements"""
 
-    width: Optional[int] = None
+    width: float
 
     def asPen(self) -> QPen:
         """Use settings values to instantiate a ``QPen``  object"""
@@ -104,7 +108,7 @@ class PenSettings(BrushSettings):
 class PlotSettings(Settings):
     """Collection of ``PenSettings`` defining the visual style of a plot"""
 
-    hide_observed_flux: int
+    show_observed_flux: int
     observed_flux: PenSettings
     binned_flux: PenSettings
     fitted_feature: PenSettings
@@ -151,14 +155,14 @@ class ApplicationSettings(Settings):
             prepare=SpectralProcessingSettings(**settings_data['prepare']),
             features=[FeatureDefinition(**f) for f in settings_data['features']],
             plotting=PlotSettings(
-                hide_observed_flux=0,
-                observed_flux=plot_settings['observed_flux'],
-                binned_flux=plot_settings['binned_flux'],
-                fitted_feature=plot_settings['fitted_feature'],
-                boundary=plot_settings['boundary'],
-                saved_feature=plot_settings['saved_feature'],
-                start_region=plot_settings['start_region'],
-                end_region=plot_settings['end_region']
+                show_observed_flux=2,
+                observed_flux=PenSettings(ColorSettings(**plot_settings['observed_flux']['color']), plot_settings['observed_flux']['width']),
+                binned_flux=PenSettings(ColorSettings(**plot_settings['binned_flux']['color']), plot_settings['binned_flux']['width']),
+                fitted_feature=PenSettings(ColorSettings(**plot_settings['fitted_feature']['color']), plot_settings['fitted_feature']['width']),
+                boundary=PenSettings(ColorSettings(**plot_settings['boundary']['color']), plot_settings['boundary']['width']),
+                saved_feature=BrushSettings(ColorSettings(**plot_settings['saved_feature']['color'])),
+                start_region=BrushSettings(ColorSettings(**plot_settings['start_region']['color'])),
+                end_region=BrushSettings(ColorSettings(**plot_settings['end_region']['color']))
             )
         )
 
@@ -171,8 +175,10 @@ class ApplicationSettings(Settings):
 
         path = path or SETTINGS_PATH
         path.parent.mkdir(exist_ok=True, parents=True)
+
+        data = self.asDict()
         with path.open('w') as ofile:
-            yaml.dump(self.asdict(), ofile)
+            yaml.dump(data, ofile)
 
     @property
     def layout_dir(self) -> Path:
@@ -195,8 +201,15 @@ class ApplicationSettings(Settings):
 
 
 class SettingsLoader:
+    """Class for loading saved application settings"""
 
-    def __new__(self, defaults=False):
+    def __new__(cls, defaults: bool = False) -> ApplicationSettings:
+        """Load application settings
+
+        Args:
+            defaults: Load default application settings instead of using settings saved on disk
+        """
+
         if defaults:
             return ApplicationSettings(
                 # ALL default application settings are defined here
@@ -212,11 +225,11 @@ class SettingsLoader:
                     FeatureDefinition(2, 'Ca II IR triplet', 7500.0, 8200.0, 8578.79, 8000.0, 8900.0),
                 ],
                 plotting=PlotSettings(
-                    hide_observed_flux=0,
-                    observed_flux=PenSettings(ColorSettings(0, 90, 120, 50), 1),
-                    binned_flux=PenSettings(ColorSettings(0, 0, 0, 255), 1),
-                    fitted_feature=PenSettings(ColorSettings(255, 0, 0, 255), 1),
-                    boundary=PenSettings(ColorSettings(255, 0, 0, 255), 3),
+                    show_observed_flux=2,
+                    observed_flux=PenSettings(ColorSettings(0, 90, 120, 50), 1.),
+                    binned_flux=PenSettings(ColorSettings(0, 0, 0, 255), 1.),
+                    fitted_feature=PenSettings(ColorSettings(255, 0, 0, 255), 1.),
+                    boundary=PenSettings(ColorSettings(255, 0, 0, 255), 3.),
                     saved_feature=BrushSettings(ColorSettings(0, 180, 0, 75)),
                     start_region=BrushSettings(ColorSettings(0, 0, 255, 50)),
                     end_region=BrushSettings(ColorSettings(255, 0, 0, 50))

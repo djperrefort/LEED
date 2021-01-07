@@ -1,8 +1,3 @@
-"""The ``FeatureTable`` widget is a subclass of the Qt built-in
-``QTableWidget`` class. It extends table functionality to automatically
-format, validate, and export spectral feature definitions.
-"""
-
 from typing import List
 
 from PyQt5 import QtWidgets, QtGui
@@ -26,6 +21,9 @@ class CustomDelegate(QtWidgets.QStyledItemDelegate):
 
 class FeatureTableWidget(QtWidgets.QTableWidget):
     """A ``QTableWidget`` designed to display feature definitions.
+
+    Extends existing ``QTableWidget`` functionality to automatically
+    format, validate, and export spectral feature definitions.
 
     Each table row has a checkbox in the first cell, with following cells
     used to display data relevant to the definition of spectral features.

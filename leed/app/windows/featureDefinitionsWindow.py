@@ -1,8 +1,3 @@
-"""The ``FeatureDefinitions`` class allows users to modify which spectroscopic
-features they want to measure along with the definitions of those features
-stored in settings.
-"""
-
 from functools import partial
 
 from PyQt5 import QtWidgets
@@ -11,8 +6,13 @@ from .baseWindow import BaseWindow
 from ..settings import SettingsLoader
 
 
-class FeatureDefinitions(BaseWindow):
-    """Window for editing definitions of spectral features."""
+class FeatureDefinitionsWindow(BaseWindow):
+    """Window for editing definitions of spectral features.
+
+    Provides a tabular interface for selecting which spectroscopic
+    features should be measured along with the definitions of those features
+    stored in settings.
+    """
 
     designFile = 'FeatureDefinitions.ui'
 
