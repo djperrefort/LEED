@@ -1,2 +1,3 @@
 from .featureTableWidget import FeatureTableWidget
 from .inspectionPlotWidget import InspectionPlotWidget
+from .pandasTableModel import PandasTableModel
