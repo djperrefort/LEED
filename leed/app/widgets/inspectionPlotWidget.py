@@ -3,7 +3,8 @@ from astropy.table import Table
 
 from leed.app.settings import RESOURCES_DIR
 
-example_spectrum = Table.read(RESOURCES_DIR / 'sn2005kc.ecsv')
+exampleSpectrum = Table.read(RESOURCES_DIR / 'sn2005kc.ecsv').to_pandas(index='wavelength').flux
+exampleBinnedSpectrum = exampleSpectrum.spectrum.bin_spectrum(10, 'median')
 
 
 class InspectionPlotWidget(pyqtgraph.PlotWidget):
@@ -42,5 +43,5 @@ class InspectionPlotWidget(pyqtgraph.PlotWidget):
 
         # Establish a dummy place holder for the plotted spectrum
         # Todo: Plot feature measurements
-        self.lineBinnedSpectrum = self.plot(example_spectrum['wavelength'], example_spectrum['flux'])
-        self.lineObservedSpectrum = self.plot(example_spectrum['wavelength'], example_spectrum['flux'])
+        self.lineObservedSpectrum = self.plot(exampleSpectrum.spectrum.wave, exampleSpectrum.spectrum.flux)
+        self.lineBinnedSpectrum = self.plot(exampleBinnedSpectrum.spectrum.wave, exampleBinnedSpectrum.spectrum.flux)

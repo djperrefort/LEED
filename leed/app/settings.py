@@ -41,13 +41,13 @@ class Settings:
 class FeatureDefinition(Settings):
     """Settings for the automated search of a spectral feature"""
 
-    enabled: int
     feature_id: str
     lower_blue: float
     lower_red: float
     restframe: float
     upper_blue: float
     upper_red: float
+    enabled: int = 2
 
 
 @dataclass

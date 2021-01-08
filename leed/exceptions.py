@@ -1,6 +1,3 @@
-"""The ``exceptions`` module defines custom Python exceptions."""
-
-
 class FeatureNotObserved(Exception):
     """Feature was not observed or does not span indicated wavelength range"""
 
