@@ -8,7 +8,7 @@ class Base:
 
     def __init__(self, obj: pd.Series) -> None:
         self._obj = obj
-        self._validate()
+        # self._validate()
 
     def _validate(self):
         """Raise an error if the pandas object is not sorted."""

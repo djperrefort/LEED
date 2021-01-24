@@ -1,11 +1,15 @@
 from functools import partial
 from typing import Optional
 
-from PyQt5 import QtWidgets, QtGui, QtCore
+from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QColorDialog, QMainWindow
+from astropy.table import Table
 
 from .baseWindow import BaseWindow
-from ..settings import SettingsLoader, ColorSettings
+from ..settings import ColorSettings, RESOURCES_DIR, SettingsLoader
+
+exampleSpectrum = Table.read(RESOURCES_DIR / 'sn2005kc.ecsv').to_pandas(index='wavelength').flux
+exampleBinnedSpectrum = exampleSpectrum.spectrum.bin_spectrum(10, 'median')
 
 
 class PlotSettingsWindow(BaseWindow):
@@ -27,9 +31,11 @@ class PlotSettingsWindow(BaseWindow):
         super().__init__(parent)
         self.settings = SettingsLoader()
 
-        # Update states of window widgets
+        # Plot demo data and update states of window widgets
+        self.graphWidget.plotObservedSpectrum(exampleSpectrum)
+        self.graphWidget.plotBinnedSpectrum(exampleBinnedSpectrum)
         self.checkBoxObservedFlux.setCheckState(self.settings.plotting.show_observed_flux)
-        self._updateStyling()
+        self._updateWidgetStates()
 
         # Assign line edit validators
         reg_ex = QtCore.QRegExp(r'[0-9]{,2}\.?[0-9]{,1}')
@@ -64,6 +70,28 @@ class PlotSettingsWindow(BaseWindow):
 
         self.checkBoxObservedFlux.stateChanged.connect(self._processCheckBoxChange)
 
+    def _updateWidgetStates(self) -> None:
+        """Restore displayed settings to currently saved values"""
+
+        plotSettings = self.settings.plotting
+
+        # Set button colors
+        self.pushButtonObservedFluxColor.setStyleSheet(f'background-color: {plotSettings.observed_flux.color.toCSS()};')
+        self.pushButtonBinnedFluxColor.setStyleSheet(f'background-color: {plotSettings.binned_flux.color.toCSS()};')
+        self.pushButtonSavedFeatureColor.setStyleSheet(f'background-color: {plotSettings.saved_feature.color.toCSS()};')
+        self.pushButtonFittedFeatureColor.setStyleSheet(f'background-color: {plotSettings.fitted_feature.color.toCSS()};')
+        self.pushButtonFeatureStartSearchRegion.setStyleSheet(f'background-color: {plotSettings.start_region.color.toCSS()};')
+        self.pushButtonFeatureEndSearchRegion.setStyleSheet(f'background-color: {plotSettings.end_region.color.toCSS()};')
+        self.pushButtonFeatureBoundaryColor.setStyleSheet(f'background-color: {plotSettings.boundary.color.toCSS()};')
+
+        # Set line edit content to match line thicknesses values
+        self.lineEditObservedFluxThickness.setText(str(plotSettings.observed_flux.width))
+        self.lineEditBinnedFluxThickness.setText(str(plotSettings.binned_flux.width))
+        self.lineEditFeatureBoundaryThickness.setText(str(plotSettings.boundary.width))
+        self.lineEditFittedFeatureThickness.setText(str(plotSettings.fitted_feature.width))
+
+        self.graphWidget.updateStyleFromSettings(self.settings)
+
     def _processButtonClick(self, settingName: str) -> None:
         """Prompt the user for a new color value and assign the result to plot settings
 
@@ -74,7 +102,7 @@ class PlotSettingsWindow(BaseWindow):
         color = QColorDialog.getColor(options=QColorDialog.ShowAlphaChannel)
         if color.isValid():
             getattr(self.settings.plotting, settingName).color = ColorSettings(*color.getRgb())
-            self._updateStyling()
+            self._updateWidgetStates()
 
     def _processLineEditChange(self, lineEdit: QtWidgets.QLineEdit, settingName: str) -> None:
         """Update the width setting of a plotted line to equal the content of a line edit
@@ -86,63 +114,25 @@ class PlotSettingsWindow(BaseWindow):
 
         getattr(self.settings.plotting, settingName).width = float(lineEdit.text())
         lineEdit.clearFocus()
-        self._updateStyling()
+        self._updateWidgetStates()
 
     def _processCheckBoxChange(self, checkedState):
         """Update settings values to reflect the checkbox state"""
 
         self.settings.plotting.show_observed_flux = checkedState
-        self._updateStyling()
-
-    def _updateStyling(self) -> None:
-        """Restore displayed settings to currently saved values"""
-
-        plotSettings = self.settings.plotting
-
-        # Set graph item colors
-        self.graphWidget.lineLowerBound.setPen(plotSettings.boundary.asPen())
-        self.graphWidget.lineUpperBound.setPen(plotSettings.boundary.asPen())
-        self.graphWidget.regionFeatureStart.setBrush(plotSettings.start_region.asBrush())
-        self.graphWidget.regionFeatureEnd.setBrush(plotSettings.end_region.asBrush())
-
-        # There is a bug in pyqtgraph where the plot renders incorrecly if a QPen is passed to the
-        # ``PlotDataItem.setPen`` method. Passing the arguments of a QPen works as an alternative
-        binFluxPen = plotSettings.binned_flux.asPen()
-        self.graphWidget.lineBinnedSpectrum.setPen(binFluxPen.color(), width=binFluxPen.width())
-
-        if plotSettings.show_observed_flux:
-            obsFluxPen = plotSettings.observed_flux.asPen()
-            self.graphWidget.lineObservedSpectrum.setPen(obsFluxPen.color(), width=obsFluxPen.width())
-
-        else:
-            self.graphWidget.lineObservedSpectrum.setPen((0, 0, 0, 0))
-
-        # Set button colors
-        self.pushButtonObservedFluxColor.setStyleSheet(f'background-color: {plotSettings.observed_flux.color.toCSS()};')
-        self.pushButtonBinnedFluxColor.setStyleSheet(f'background-color: {plotSettings.binned_flux.color.toCSS()}')
-        self.pushButtonSavedFeatureColor.setStyleSheet(f'background-color: {plotSettings.saved_feature.color.toCSS()}')
-        self.pushButtonFittedFeatureColor.setStyleSheet(f'background-color: {plotSettings.fitted_feature.color.toCSS()}')
-        self.pushButtonFeatureStartSearchRegion.setStyleSheet(f'background-color: {plotSettings.start_region.color.toCSS()}')
-        self.pushButtonFeatureEndSearchRegion.setStyleSheet(f'background-color: {plotSettings.end_region.color.toCSS()}')
-        self.pushButtonFeatureBoundaryColor.setStyleSheet(f'background-color: {plotSettings.boundary.color.toCSS()}')
-
-        # Set line edit content to match line thicknesses values
-        self.lineEditObservedFluxThickness.setText(str(plotSettings.observed_flux.width))
-        self.lineEditBinnedFluxThickness.setText(str(plotSettings.binned_flux.width))
-        self.lineEditFeatureBoundaryThickness.setText(str(plotSettings.boundary.width))
-        self.lineEditFittedFeatureThickness.setText(str(plotSettings.fitted_feature.width))
+        self._updateWidgetStates()
 
     def reset(self):
         """Reset displayed settings values to reflect package defaults"""
 
         self.settings = SettingsLoader()
-        self._updateStyling()
+        self._updateWidgetStates()
 
     def restoreDefaults(self) -> None:
         """Restore displayed settings to default values"""
 
         self.settings = SettingsLoader(True)
-        self._updateStyling()
+        self._updateWidgetStates()
 
     def apply(self) -> None:
         """Save application settings to disk"""

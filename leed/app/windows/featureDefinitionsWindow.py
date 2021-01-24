@@ -46,16 +46,23 @@ class FeatureDefinitionsWindow(BaseWindow):
         for i in range(self.tableWidget.columnCount()):
             self.tableWidget.horizontalHeader().setSectionResizeMode(i, QtWidgets.QHeaderView.Fixed)
 
-    def apply(self) -> None:
-        """Save changes without exiting the window."""
+    def apply(self) -> bool:
+        """Save changes without exiting the window.
+
+        Returns:
+            Boolean indicating if settings were successfully saved
+        """
 
         if self.tableWidget.validateTable():
             settings = SettingsLoader()
             settings.features = self.tableWidget.contentsToList()
             settings.saveToDisk()
+            return True
+
+        return False
 
     def save(self) -> None:
-        """Save changes and exit the window."""
+        """Try saving changes and, if successful, exit the window."""
 
         if self.apply():
             self.close()

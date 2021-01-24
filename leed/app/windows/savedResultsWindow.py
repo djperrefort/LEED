@@ -10,7 +10,7 @@ from ..widgets import PandasTableModel
 class SavedResultsWindow(BaseWindow):
     """Window for displaying a ``pandas.DataFrame`` object in a ``QTableWidget``"""
 
-    design_file = '../resources/layouts/ResultsWindow.ui'
+    designFile = 'ResultsWindow.ui'
 
     def __init__(self, dataframe: pd.DataFrame, parent: QMainWindow = None) -> None:
         """Populate window with tabular data from a ``pandas.DataFrame`` object
@@ -32,4 +32,4 @@ class SavedResultsWindow(BaseWindow):
         self.tableView.setModel(PandasTableModel(data))
         self.tableView.resizeColumnsToContents()
         now = datetime.now()
-        self.statusbar.showMessage(f'Loaded on {now: %b %d, %Y} at {now.hour}:{now.minute}')
+        self.statusbar.showMessage(f'Results last loaded on {now: %b %d, %Y} at {now.hour}:{now.minute}')

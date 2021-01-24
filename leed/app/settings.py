@@ -33,6 +33,12 @@ class Settings:
 
         return out_dict
 
+    def __getitem__(self, item):
+        if item in self.__dataclass_fields__:
+            return getattr(self, item)
+
+        raise IndexError(f'No dataclass field names {item}')
+
     def __str__(self) -> str:
         return str(self.asDict())
 
@@ -215,14 +221,14 @@ class SettingsLoader:
                 # ALL default application settings are defined here
                 prepare=SpectralProcessingSettings(5, 3.1, 10, 'median'),
                 features=[
-                    FeatureDefinition(2, 'Ca II H & K', 3500.0, 3900.0, 3945.02, 3800.0, 4100.0),
-                    FeatureDefinition(2, 'Si II λ4130', 3900.0, 4000.0, 4129.78, 4000.0, 4150.0),
-                    FeatureDefinition(2, 'Mg II, Fe II', 3900.0, 4450.0, 4481.0, 4150.0, 4700.0),
-                    FeatureDefinition(2, 'Fe II, Si II', 4500.0, 5050.0, 5169.0, 4700.0, 5550.0),
-                    FeatureDefinition(2, 'S II λ5449, λ5622', 5150.0, 5500.0, 5535.5, 5300.0, 5700.0),
-                    FeatureDefinition(2, 'Si II λ5972', 5550.0, 5800.0, 5971.89, 5700.0, 6000.0),
-                    FeatureDefinition(2, 'Si II λ6355', 5800.0, 6200.0, 6356.08, 6000.0, 6600.0),
-                    FeatureDefinition(2, 'Ca II IR triplet', 7500.0, 8200.0, 8578.79, 8000.0, 8900.0),
+                    FeatureDefinition('Ca II H & K', 3500.0, 3900.0, 3945.02, 3800.0, 4100.0, 2),
+                    FeatureDefinition('Si II λ4130', 3900.0, 4000.0, 4129.78, 4000.0, 4150.0, 2),
+                    FeatureDefinition('Mg II, Fe II', 3900.0, 4450.0, 4481.0, 4150.0, 4700.0, 2),
+                    FeatureDefinition('Fe II, Si II', 4500.0, 5050.0, 5169.0, 4700.0, 5550.0, 2),
+                    FeatureDefinition('S II λ5449, λ5622', 5150.0, 5500.0, 5535.5, 5300.0, 5700.0, 2),
+                    FeatureDefinition('Si II λ5972', 5550.0, 5800.0, 5971.89, 5700.0, 6000.0, 2),
+                    FeatureDefinition('Si II λ6355', 5800.0, 6200.0, 6356.08, 6000.0, 6600.0, 2),
+                    FeatureDefinition('Ca II IR triplet', 7500.0, 8200.0, 8578.79, 8000.0, 8900.0, 2),
                 ],
                 plotting=PlotSettings(
                     show_observed_flux=2,

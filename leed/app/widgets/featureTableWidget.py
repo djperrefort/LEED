@@ -93,7 +93,7 @@ class FeatureTableWidget(QtWidgets.QTableWidget):
         for feature in settings.features:
             rowIndex = self.addEmptyRow()
             for column, columnName in enumerate(self.settingsColumnOrder):
-                self.item(rowIndex, column).setText(str(getattr(feature, columnName)))
+                self.item(rowIndex, column).setText(str(feature[columnName]))
 
             self.item(rowIndex, 0).setCheckState(feature.enabled)
 

@@ -28,16 +28,16 @@ class SpectrumAccessor(Base):
         """
 
         if bin_method == 'sum':
-            return generic_filter(self.flux, sum, bin_size)
+            return pd.Series(generic_filter(self.flux, sum, bin_size), index=self.wave)
 
         elif bin_method == 'average':
-            return generic_filter(self.flux, np.average, bin_size)
+            return pd.Series(generic_filter(self.flux, np.average, bin_size), index=self.wave)
 
         elif bin_method == 'gauss':
-            return gaussian_filter(self.flux, bin_size)
+            return pd.Series(gaussian_filter(self.flux, bin_size), index=self.wave)
 
         elif bin_method == 'median':
-            return median_filter(self.flux, bin_size)
+            return pd.Series(median_filter(self.flux, bin_size), index=self.wave)
 
         raise ValueError(f'Unknown method {bin_method}')
 
@@ -61,7 +61,7 @@ class SpectrumAccessor(Base):
 
         # Determine extinction
         mwebv = dust_map.ebv(ra, dec, frame='fk5j2000', unit='degree')
-        mag_ext = extinction.fitzpatrick99(self._obj.index, rv * mwebv, rv)
+        mag_ext = extinction.fitzpatrick99(self.wave, rv * mwebv, rv)
 
         # Correct flux to rest-frame
         out = self._obj.copy()
