@@ -19,19 +19,19 @@ class GaussianFit:
     cov: np.array
 
     @property
-    def amplitudeErr(self):
+    def amplitudeErr(self) -> None:  # pragma: no cover
         return np.sqrt(self.cov[0][0])
 
     @property
-    def avgErr(self):
+    def avgErr(self) -> None:  # pragma: no cover
         return np.sqrt(self.cov[1][1])
 
     @property
-    def stdDevErr(self):
+    def stdDevErr(self) -> None:  # pragma: no cover
         return np.sqrt(self.cov[2][2])
 
     @property
-    def offsetErr(self):
+    def offsetErr(self) -> None:  # pragma: no cover
         return np.sqrt(self.cov[3][3])
 
 
@@ -57,7 +57,7 @@ class CalcVelocity(Base):
 
         return -depth * np.exp(-((x - avg) ** 2) / (2 * std ** 2)) + offset
 
-    def _fit_gaussian(self) -> GaussianFit:
+    def _fitGaussian(self) -> GaussianFit:
         """Fitted an negative gaussian to the binned flux
 
         Returns:
@@ -65,34 +65,37 @@ class CalcVelocity(Base):
         """
 
         try:
-            gauss_params, cov = curve_fit(
+            gaussParams, cov = curve_fit(
                 f=self.gaussian,
                 xdata=self.wave,
                 ydata=self.flux,
                 p0=[0.5, np.median(self.wave), 50., 0])
 
         except RuntimeError:
-            gauss_params = [np.nan, np.nan, np.nan, np.nan]
+            gaussParams = [np.nan, np.nan, np.nan, np.nan]
             cov = np.full((4, 4), np.nan)
 
-        return GaussianFit(*gauss_params, cov)
+        return GaussianFit(*gaussParams, cov)
 
-    def velocity(self, rest_frame: float) -> float:
+    def velocity(self, restFrame: float) -> float:
         """Calculate the velocity of a feature
 
         Fit a feature with a negative gaussian and determine the feature's
         velocity. Returned value is ``np.nan`` if the fit fails.
+        
+        Args:
+            restFrame: The rest frame wavelength of the feature
 
         Returns:
             The velocity of the feature in km / s
         """
 
-        gaussFit = self._fit_gaussian()
+        gaussFit = self._fitGaussian()
 
         # Calculate velocity
         unit = units.km / units.s
-        speed_of_light = c.to(unit).value
-        return speed_of_light * (
-                ((((rest_frame - gaussFit.avg) / rest_frame) + 1) ** 2 - 1) /
-                ((((rest_frame - gaussFit.avg) / rest_frame) + 1) ** 2 + 1)
+        speedOfLight = c.to(unit).value
+        return speedOfLight * (
+                ((((restFrame - gaussFit.avg) / restFrame) + 1) ** 2 - 1) /
+                ((((restFrame - gaussFit.avg) / restFrame) + 1) ** 2 + 1)
         )

@@ -89,8 +89,8 @@ def pre_process(spectral_data: pd.DataFrame, t0: float, ra: float, dec: float, z
     spectral_data = spectral_data[(min_phase <= phase) & (phase <= max_phase)]
 
     spectral_data = spectral_data \
-        .spectrum.correct_extinction(ra, dec) \
-        .spectrum.restframe(z)
+        .spectrum.correctExtinction(ra, dec) \
+        .spectrum.restFrame(z)
 
     # Restframe the spectrum
     return spectral_data

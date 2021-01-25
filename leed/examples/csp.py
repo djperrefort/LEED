@@ -102,7 +102,7 @@ def pre_process(spectral_data: pd.DataFrame, t0: float, ra: float, dec: float) -
 
     phase = spectral_data['time'] - t0
     spectral_data = spectral_data[(min_phase <= phase) & (phase <= max_phase)]
-    spectral_data.flux = spectral_data.flux.spectrum.correct_extinction(ra, dec)
+    spectral_data.flux = spectral_data.flux.spectrum.correctExtinction(ra, dec)
 
     return spectral_data
 
