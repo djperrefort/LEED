@@ -7,7 +7,7 @@ from leed.accessors.base import Base
 class CalcArea(Base):
     """Represents the area calculation for a spectroscopic feature"""
 
-    def _continuum_area(self, continuum: pd.Series) -> float:
+    def _continuumArea(self, continuum: pd.Series) -> float:
         """The area under the pseudo continuum curve
 
         Args:
@@ -21,7 +21,7 @@ class CalcArea(Base):
         # Treat continuum as a straight-line and find the area underneath
         return (self.wave[-1] - self.wave[0]) * (y1 + y2) / 2
 
-    def _flux_area(self) -> float:
+    def _fluxArea(self) -> float:
         """The area under the flux curve"""
 
         return np.trapz(y=self.flux, x=self.wave)
@@ -34,6 +34,9 @@ class CalcArea(Base):
 
         Args:
             continuum: The flux of the pseudo continuum
+
+        Returns:
+            The adrea of the feature in units of wavelength squared
         """
 
-        return self._continuum_area(continuum) - self._flux_area()
+        return self._continuumArea(continuum) - self._fluxArea()

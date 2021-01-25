@@ -1,4 +1,4 @@
-from typing import final
+from typing import List, final
 
 import extinction
 import numpy as np
@@ -12,63 +12,81 @@ from .base import Base
 from ..app.settings import RESOURCES_DIR
 from ..exceptions import SamplingRangeError
 
-dust_map = sfdmap.SFDMap(RESOURCES_DIR / 'schlegel98_dust_map')
+DUSTMAP = sfdmap.SFDMap(RESOURCES_DIR / 'schlegel98_dust_map')
 
 
 @final
 @pd.api.extensions.register_series_accessor('spectrum')
 class SpectrumAccessor(Base):
+    """Pandas accessor for manipulating spectroscopic data"""
 
-    def bin_spectrum(self, bin_size, bin_method):
+    def bin(self, size: float, method: str) -> pd.Series:
         """Bin a spectrum to a given resolution
 
         Args:
-            bin_size (float): The width of the bins
-            bin_method (str): Either 'median', 'average', 'sum', or 'gauss'
+            size: The width of the bins
+            method: Either 'median', 'average', 'sum', or 'gauss'
+
+        Returns:
+            The binned spectrum as a new ``Series`` object
+
+        Raises:
+            ValueError: For an unknown binning method
         """
 
-        if bin_method == 'sum':
-            return pd.Series(generic_filter(self.flux, sum, bin_size), index=self.wave)
+        if method == 'sum':
+            return pd.Series(generic_filter(self.flux, sum, size), index=self.wave)
 
-        elif bin_method == 'average':
-            return pd.Series(generic_filter(self.flux, np.average, bin_size), index=self.wave)
+        elif method == 'average':
+            return pd.Series(generic_filter(self.flux, np.average, size), index=self.wave)
 
-        elif bin_method == 'gauss':
-            return pd.Series(gaussian_filter(self.flux, bin_size), index=self.wave)
+        elif method == 'gauss':
+            return pd.Series(gaussian_filter(self.flux, size), index=self.wave)
 
-        elif bin_method == 'median':
-            return pd.Series(median_filter(self.flux, bin_size), index=self.wave)
+        elif method == 'median':
+            return pd.Series(median_filter(self.flux, size), index=self.wave)
 
-        raise ValueError(f'Unknown method {bin_method}')
+        raise ValueError(f'Unknown method {method}')
 
-    def restframe(self, z):
-        """Convert spectrum wavelengths into the restframe"""
-
-        out = self._obj.copy()
-        out._obj.index /= (1 + z)
-        return out
-
-    def correct_extinction(self, ra, dec, rv=3.1):
-        """Rest frame spectra and correct for MW extinction
-
-        Spectra are rest-framed and corrected for MW extinction using the
-        Schlegel et al. 98 dust map and the Fitzpatrick et al. 99 extinction
-        law. if rv is not given, a value of 3.1 is used.
+    def restFrame(self, z: float) -> pd.Series:
+        """Convert spectrum wavelengths into the restframe
 
         Args:
-            rv  (float): Rv value to use for extinction
+            z: The redshift of the spectrum
+
+        Returns:
+            A copy of the current spectrum, redshifted to the restframe
+        """
+
+        out = self._obj.copy()
+        out.index /= (1 + z)
+        return out
+
+    def correctExtinction(self, ra: float, dec: float, rv: float = 3.1) -> pd.Series:
+        """Rest frame spectra and correct for MW extinction
+
+        Spectra are corrected for MW extinction using the
+        Schlegel et al. 98 dust map and the Fitzpatrick et al. 99 extinction
+        law. If rv is not given, a value of 3.1 is used.
+
+        Args:
+            ra: Right Ascension of the object
+            dec: Declination of the object
+            rv: Rv value to use for extinction
         """
 
         # Determine extinction
-        mwebv = dust_map.ebv(ra, dec, frame='fk5j2000', unit='degree')
-        mag_ext = extinction.fitzpatrick99(self.wave, rv * mwebv, rv)
+        mwebv = DUSTMAP.ebv(ra, dec, frame='fk5j2000', unit='degree')
+        magExt = extinction.fitzpatrick99(self.wave, rv * mwebv, rv)
 
         # Correct flux to rest-frame
         out = self._obj.copy()
-        out /= 10 ** (0.4 * mag_ext)
+        out /= 10 ** (0.4 * magExt)
         return out
 
-    def sample_feature_properties(self, feat_start, feat_end, rest_frame, nstep=0, callback=None):
+    def sampleFeatureProperties(
+            self, featStart: float, featEnd: float, restFrame: float, nstep: int = 0, callback: callable = None
+    ) -> List[float]:
         """Calculate the properties of a single feature in a spectrum
 
         Velocity values are returned in km / s. Error values are determined
@@ -76,11 +94,11 @@ class SpectrumAccessor(Base):
         boundaries ``nstep`` flux measurements in either direction.
 
         Args:
-            feat_start  (float): Starting wavelength of the feature
-            feat_end    (float): Ending wavelength of the feature
-            rest_frame  (float): Rest frame location of the specified feature
-            nstep         (int): Number of samples taken in each direction
-            callback (callable): Call a function after every iteration.
+            featStart: Starting wavelength of the feature
+            featEnd: Ending wavelength of the feature
+            restFrame: Rest frame location of the specified feature
+            nstep: Number of samples taken in each direction
+            callback: Call a function after every iteration.
                 Function is passed the sampled feature.
 
         Returns:
@@ -90,50 +108,56 @@ class SpectrumAccessor(Base):
             - The equivalent width
             - The formal error in equivalent width
             - The sampling error in equivalent width
-            - The feature calc_area
-            - The formal error in calc_area
-            - The sampling error in calc_area
+            - The feature area
+            - The formal error in area
+            - The sampling error in area
+
+        Raises:
+            ValueError: When the start and end position of the feature are too close together
+            SamplingRangeError: When the width of the feature is less than the number of samples
         """
 
         # Get indices for beginning and end of the feature
-        idx_start = np.where(self._obj.index == feat_start)[0][0]
-        idx_end = np.where(self._obj.index == feat_end)[0][0]
-        if idx_end - idx_start <= 10:
+        idxStart = np.where(self.wave == featStart)[0][0]
+        idxEnd = np.where(self.wave == featEnd)[0][0]
+        if idxEnd - idxStart <= 10:
             raise ValueError('Range too small. Please select a wider range')
+        print(idxStart, idxEnd)
 
         # We vary the beginning and end of the feature to estimate the error
-        velocity, pequiv_width, area = [], [], []
+        velocity, pEquivWidth, area = [], [], []
         for i in np.arange(-nstep, nstep + 1):
             for j in np.arange(nstep, -nstep - 1, -1):
 
                 # Get sub-sampled wavelength/flux
-                sample_start_idx = idx_start + i
-                sample_end_idx = idx_end + j
+                idxSampleStart = idxStart + i
+                idxSampleEnd = idxEnd + j
 
-                if sample_start_idx < 0 or sample_end_idx >= len(self._obj):
+                if idxSampleStart < 0 or idxSampleEnd >= len(self._obj):
                     raise SamplingRangeError
 
                 # Determine feature properties
-                sample = self._obj[sample_start_idx: sample_end_idx]
-                velocity.append(sample.feature.velocity(rest_frame))
-                pequiv_width.append(sample.feature.pew())
-                area.append(sample.feature.area())
+                sample = self._obj[idxSampleStart: idxSampleEnd]
+                continuum = sample.feature.fitPseudoContinuum()
+                velocity.append(sample.feature.velocity(restFrame))
+                pEquivWidth.append(sample.feature.pew(continuum))
+                area.append(sample.feature.area(continuum))
 
                 if callback:
                     callback(sample)
 
-        avg_velocity = np.mean(velocity)
-        avg_ew = np.mean(pequiv_width)
-        avg_area = np.mean(area)
+        avgVelocity = np.mean(velocity)
+        avgEw = np.mean(pEquivWidth)
+        avgArea = np.mean(area)
 
         return [
-            unc.nominal_value(avg_velocity),
-            unc.std_dev(avg_velocity),
+            unc.nominal_value(avgVelocity),
+            unc.std_dev(avgVelocity),
             np.std(nominal_values(velocity)),
-            unc.nominal_value(avg_ew),
-            unc.std_dev(avg_ew),
-            np.std(nominal_values(pequiv_width)),
-            unc.nominal_value(avg_area),
-            unc.std_dev(avg_area),
+            unc.nominal_value(avgEw),
+            unc.std_dev(avgEw),
+            np.std(nominal_values(pEquivWidth)),
+            unc.nominal_value(avgArea),
+            unc.std_dev(avgArea),
             np.std(nominal_values(area))
         ]

@@ -119,7 +119,7 @@ class MainWindow(BaseWindow):
 
         # Plot demo data and update states of window widgets
         snSpectrum = self.dataAccess.spectrum
-        binnedSnSpectrum = snSpectrum.spectrum.bin_spectrum(5, 'median')
+        binnedSnSpectrum = snSpectrum.spectrum.bin(5, 'median')
         self.graphWidget.plotObservedSpectrum(snSpectrum)
         self.graphWidget.plotBinnedSpectrum(binnedSnSpectrum)
 

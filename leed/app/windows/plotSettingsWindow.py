@@ -9,7 +9,7 @@ from .baseWindow import BaseWindow
 from ..settings import ColorSettings, RESOURCES_DIR, SettingsLoader
 
 exampleSpectrum = Table.read(RESOURCES_DIR / 'sn2005kc.ecsv').to_pandas(index='wavelength').flux
-exampleBinnedSpectrum = exampleSpectrum.spectrum.bin_spectrum(10, 'median')
+exampleBinnedSpectrum = exampleSpectrum.spectrum.bin(10, 'median')
 
 
 class PlotSettingsWindow(BaseWindow):

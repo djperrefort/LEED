@@ -50,12 +50,12 @@ def tophat(wave, m=0, b=1, start=100, end=-100, height=0):
         height (float): Height of the top-hat  (default: 0)
 
     Returns:
-        A simualted spectrum
+        A simulated spectrum
     """
 
     flux = m * wave + b
     if height is not None:
-        flux[start: end] = height
+        flux[start + 1: end] = height
 
     return pd.Series(flux, index=wave)
 

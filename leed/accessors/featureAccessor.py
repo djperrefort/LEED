@@ -5,6 +5,7 @@ import pandas as pd
 
 from .calcArea import CalcArea
 from .calcPEW import CalcPEW
+from .calcPseudoContinuum import calcPseudoContinuum
 from .calcVelocity import CalcVelocity
 from ..app.settings import FeatureDefinition
 from ..exceptions import FeatureNotObserved
@@ -12,9 +13,10 @@ from ..exceptions import FeatureNotObserved
 
 @final
 @pd.api.extensions.register_series_accessor('feature')
-class FeatureAccessor(CalcArea, CalcPEW, CalcVelocity):
+class FeatureAccessor(CalcArea, CalcPEW, CalcVelocity, calcPseudoContinuum):
+    """Pandas accessor for calculating the properties of spectroscopic SN features"""
 
-    def find_peak_wavelength(self, lower_bound: float, upper_bound: float, behavior: str = 'min') -> float:
+    def findPeakWavelength(self, lowerBound: float, upperBound: float, behavior: str = 'min') -> float:
         """Return wavelength of the maximum flux within given wavelength bounds
 
         The behavior argument can be used to select the 'min' or 'max' wavelength
@@ -22,8 +24,8 @@ class FeatureAccessor(CalcArea, CalcPEW, CalcVelocity):
         default behavior is 'min'.
 
         Args:
-            lower_bound: Lower wavelength boundary
-            upper_bound: Upper wavelength boundary
+            lowerBound: Lower wavelength boundary
+            upperBound: Upper wavelength boundary
             behavior: Return the 'min' or 'max' wavelength when multiple maxima are found
 
         Returns:
@@ -31,20 +33,20 @@ class FeatureAccessor(CalcArea, CalcPEW, CalcVelocity):
         """
 
         # Make sure the given spectrum spans the given wavelength bounds
-        if not any((self.wave > lower_bound) & (self.wave < upper_bound)):
+        if not any((self.wave > lowerBound) & (self.wave < upperBound)):
             raise FeatureNotObserved('Feature not in spectral wavelength range.')
 
         # Select the portion of the spectrum within the given bounds
-        feature_indices = (lower_bound <= self.wave) & (self.wave <= upper_bound)
-        feature_flux = self.flux[feature_indices]
-        feature_wavelength = self.wave[feature_indices]
+        featureIndices = (lowerBound <= self.wave) & (self.wave <= upperBound)
+        featureFlux = self.flux[featureIndices]
+        featureWavelength = self.wave[featureIndices]
 
         # Get peak according to specified behavior
-        peak_indices = np.argwhere(feature_flux == np.max(feature_flux))
-        behavior_func = getattr(np, behavior)
-        return behavior_func(feature_wavelength[peak_indices])
+        peakIndices = np.argwhere(featureFlux == np.max(featureFlux))
+        behaviorFunc = getattr(np, behavior)
+        return behaviorFunc(featureWavelength[peakIndices])
 
-    def guess_bounds(self, feature: FeatureDefinition) -> Tuple[float, float]:
+    def guessBounds(self, feature: FeatureDefinition) -> Tuple[float, float]:
         """Guess the observed start and end wavelengths for a given feature
 
         Args:
@@ -55,17 +57,6 @@ class FeatureAccessor(CalcArea, CalcPEW, CalcVelocity):
             - The ending wavelength of the feature
         """
 
-        feat_start = self.find_peak_wavelength(feature.lower_blue, feature.upper_blue, 'min')
-        feat_end = self.find_peak_wavelength(feature.lower_red, feature.upper_red, 'max')
-        return feat_start, feat_end
-
-    def fit_pseudo_continuum(self) -> np.array:
-        """Array of values for the fitted sudo continuum"""
-
-        # Fit a line to the end points
-        x0, x1 = self.wave[0], self.wave[-1]
-        y0, y1 = self.flux[0], self.flux[-1]
-        m = (y0 - y1) / (x0 - x1)
-        b = - m * x0 + y0
-
-        return m * self.wave + b
+        featStart = self.findPeakWavelength(feature.lower_blue, feature.upper_blue, 'min')
+        featEnd = self.findPeakWavelength(feature.lower_red, feature.upper_red, 'max')
+        return featStart, featEnd
